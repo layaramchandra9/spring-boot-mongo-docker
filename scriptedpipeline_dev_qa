@@ -1,0 +1,54 @@
+node{
+    def build_number=BUILD_NUMBER
+    stage('Git Clone')
+    {
+        git url: 'https://github.com/layaramchandra9/spring-boot-mongo-docker.git', branch : 'master'
+    }
+    stage('Maven clean package')
+    {
+       def mavenHome= tool name: "Maven",type: "maven"
+       sh "${mavenHome}/bin/mvn clean package"
+    }
+    stage('Build docker image')
+    {
+       sh "docker build -t layaramchandra/spring-boot-mongo-docker:${build_number} ."
+    }
+    stage('Docker login and push')
+    {
+       withCredentials([string(credentialsId: 'DockerHubPwd', variable: 'DockerHubPwd')]) {
+       
+          sh "docker login -u layaramchandra -p ${DockerHubPwd}"
+          
+       }
+       sh "docker push layaramchandra/spring-boot-mongo-docker:${build_number}"
+    // some block
+    }
+    
+     // Remove local image in Jenkins Server
+    stage("Remove Local Image"){
+        sh "docker rmi -f layaramchandra/spring-boot-mongo-docker:${build_number}"
+    }
+    
+	stage("Update image version in compose"){
+	  sh "sed -i 's/latest/${build_number}/g' docker-compose.yml "
+	 
+	}
+
+    stage("Deploy to DEV Docker Server"){
+        sshagent(['Docker_Server_SSH']) {
+            sh "ssh -o StrictHostKeyChecking=no ubuntu@172.31.32.108 docker rm -f springapp || true"
+		    sh 'scp -o StrictHostKeyChecking=no  docker-compose.yml docker-compose-dev.yml ubuntu@172.31.32.108:'
+            sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.32.108 docker-compose -f  docker-compose.yml -f docker-compose-dev.yml up -d'
+        }
+    }
+	
+	  stage("Deploy to QA Docker Server"){
+        sshagent(['Docker_Server_SSH']) {
+            sh "ssh -o StrictHostKeyChecking=no ubuntu@172.31.22.93 docker rm -f springapp || true"
+		    sh 'scp -o StrictHostKeyChecking=no  docker-compose.yml docker-compose-dev.yml ubuntu@172.31.22.93:'
+            sh 'ssh -o StrictHostKeyChecking=no ubuntu@172.31.22.93 docker-compose -f  docker-compose.yml -f docker-compose-dev.yml up -d'
+        }
+    }
+    
+    
+}
