@@ -1,6 +1,6 @@
 version: '3.8'
 services:
-  spingapp:
+  springapp:
       environment:
        - MONGO_DB_USERNAME=devdb
        - MONGO_DB_PASSWORD=devdb1234
