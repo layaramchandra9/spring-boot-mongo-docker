@@ -1,6 +1,6 @@
 version: '3.8'
 services:
-  spingapp:
+  springapp:
     image: layaramchandra/spring-boot-mongo-docker:latest
     ports:
       - 8080:8080
